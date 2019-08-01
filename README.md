@@ -121,9 +121,13 @@ docker rmi $(docker images dev-* -q)
 
 <br>
 
-## __Playground 듀토리얼__
+<hr>
 
-[hyperledger.github.io playground 듀토리얼](https://hyperledger.github.io/composer/latest/tutorials/playground-tutorial.html) 을 참고하시면 됩니다.
+<br>
+
+## __Playground 튜토리얼__
+
+[hyperledger.github.io playground 튜토리얼](https://hyperledger.github.io/composer/latest/tutorials/playground-tutorial.html) 을 참고하시면 됩니다.
 
 ### 강의는 로컬 환경(localhost:8080/login)이 아닌 __[온라인 hyperledger playground](https://composer-playground.mybluemix.net/)__ 에서 진행되었습니다.
 
@@ -131,8 +135,88 @@ docker rmi $(docker images dev-* -q)
 
 > ### __1단계 : Hyperledger Composer Playground 열기__
 
-위의 [온라인 hyperledger playground 링크](https://composer-playground.mybluemix.net/) 로 접속해주세요.
+1. 위의 [온라인 hyperledger playground 링크](https://composer-playground.mybluemix.net/) 로 접속해주세요.
 
 <br>
 
 > ### __2단계 : 새로운 비즈니스 네트워크 만들기__
+
+1. `Deploy a new business network`을 선택합니다.
+
+2. `Basic Information`의 `Give your new Business Network a name` 탭에 이름을 입력해주세요. (강의는 `tutorial-blockchain` 이라는 이름으로 진행되었습니다.)
+
+3. 새 비즈니스에 대한 설명을 추가할 수 있으나 생략하겠습니다.
+
+4. 처음부터 네트워크를 구축하기 때문에 `empty-business-network`를 선택해주세요.
+
+5. `Deploy` 하시면 새 네트워크가 추가된 것을 확인할 수 있습니다. (배포)
+
+<br>
+
+> ### __3단계 : 비즈니스 네트워크에 연결__
+
+__admin@tutorial-blockchain이라는 새 비즈니스 네트워크 카드가 생성된 것을 확인할 수 있습니다.__
+
+
+
+1. 생성된 새 비즈니스 네트워크 카드 밑의 `Connect now`를 선택합니다.
+
+<br>
+
+> ### __4단계 : 모델 파일 추가__
+
+__모델 파일은 비즈니스 네트워크에서 자산, 참가자, 트랜잭션 및 이벤트를 정의합니다.__
+
+1. `Define`의 `Files`에서 `Model File`을 선택해주세요.
+
+2. 아래의 코드를 복붙해주세요.
+
+```
+/**
+ * My commodity trading network
+ */
+namespace org.example.mynetwork
+
+// 
+asset Commodity identified by tradingSymbol {
+    o String tradingSymbol
+    o String description
+    o String mainExchange
+    o Double quantity
+    --> Trader owner
+}
+participant Trader identified by tradeId {
+    o String tradeId
+    o String firstName
+    o String lastName
+}
+transaction Trade {
+    --> Commodity commodity
+    --> Trader newOwner
+}
+```
+
+<br>
+
+<hr>
+
+<br>
+
+## __Hyperledger 개발자 자습서__
+
+[hyperledger.github.io hyperledger 개발자 자습서](https://hyperledger.github.io/composer/latest/tutorials/developer-tutorial)를 참고하세요!
+
+### __Linux Ubuntu 환경에서 진행해주세요.__
+
+__로컬 환경에서 네트워크를 구축하는 실습입니다.__
+
+<br>
+
+> ### __1단계 : 비즈니스 네트워크 구조 만들기__
+
+```
+// Yeoman(yo)을 사용해서 네트워크 구축
+// Yeoman이란 프로젝트에 필요한 디렉토리 및 파일을 만들어주는 커맨드라인 인터페이스
+yo hyperledger-composer:businessnetwork
+```
+
