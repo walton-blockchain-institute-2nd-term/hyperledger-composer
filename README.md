@@ -11,8 +11,9 @@ __[Hyperledger Composer 공식 링크](https://hyperledger.github.io/composer/la
 [hyperledger.github.io 사전 필수 요구사항 설치](https://hyperledger.github.io/composer/latest/installing/installing-prereqs.html#ubuntu)
 
 ```
-// curl을 사용해 prereqs-ubuntu.sh 다운로드
 // 기본 ~ 경로에서 하시면 될 것 같아요.. . . ...
+
+// curl을 사용해 prereqs-ubuntu.sh 다운로드
 curl -O https://hyperledger.github.io/composer/latest/prereqs-ubuntu.sh
 
 // 소유자에게 실행 권한 추가
@@ -145,7 +146,7 @@ docker rmi $(docker images dev-* -q)
 
 2. `Basic Information`의 `Give your new Business Network a name` 탭에 이름을 입력해주세요. (강의는 `tutorial-blockchain` 이라는 이름으로 진행되었습니다.)
 
-3. 새 비즈니스에 대한 설명을 추가할 수 있으나 생략하겠습니다.
+3. 새 비즈니스에 대한 설명을 추가할 수 있으나 강의에서는 생략했습니다.
 
 4. 처음부터 네트워크를 구축하기 때문에 `empty-business-network`를 선택해주세요.
 
@@ -157,15 +158,13 @@ docker rmi $(docker images dev-* -q)
 
 __admin@tutorial-blockchain이라는 새 비즈니스 네트워크 카드가 생성된 것을 확인할 수 있습니다.__
 
-
-
 1. 생성된 새 비즈니스 네트워크 카드 밑의 `Connect now`를 선택합니다.
 
 <br>
 
 > ### __4단계 : 모델 파일 추가__
 
-__모델 파일은 비즈니스 네트워크에서 자산, 참가자, 트랜잭션 및 이벤트를 정의합니다.__
+__모델 파일은 비즈니스 네트워크에서 자산(asset), 참가자(participant), 트랜잭션(transaction) 및 이벤트를 정의합니다.__
 
 1. `Define`의 `Files`에서 `Model File`을 선택해주세요.
 
@@ -177,7 +176,6 @@ __모델 파일은 비즈니스 네트워크에서 자산, 참가자, 트랜잭�
  */
 namespace org.example.mynetwork
 
-// 
 asset Commodity identified by tradingSymbol {
     o String tradingSymbol
     o String description
@@ -196,6 +194,63 @@ transaction Trade {
 }
 ```
 
+3. `Deploy Changes`로 `models/model.cto`의 변경사항을 업데이트합니다.
+
+<br>
+
+> ### __5단계 : 트랜잭션 프로세서 스크립트 파일 추가__
+
+__도메인 모델이 정의되었으므로 비즈니스 네트워크에 대한 트랜잭션을 정의할 수 있습니다.__
+
+__정의된 함수는 트랜잭션이 `submit`될 때 자동으로 실행됩니다.__
+
+1. `Add a file...`을 선택해주세요.
+
+2. `Script File(.js)`를 선택합니다.
+
+3. 아래의 코드를 복붙해주세요.
+
+``` js
+/**
+ * Track the trade of a commodity from one trader to another
+ * @param {org.example.mynetwork.Trade} trade - the trade to be processed
+ * @transaction
+ */
+async function tradeCommodity(trade) {
+    // 매개변수로 들어온 트랜잭션의 newOwner를 commodity의 owner로 설정
+    trade.commodity.owner = trade.newOwner;
+    // 수정된 내용을 저장
+    let assetRegistry = await getAssetRegistry('org.example.mynetwork.Commodity');
+    await assetRegistry.update(trade.commodity);
+}
+```
+
+4. `Deploy Changes`로 `lib/script.js` 파일을 업데이트 해주세요.
+
+<br>
+
+> ### __6단계 : 엑세스 제어__
+
+<br>
+
+> ### __7단계 : 업데이트 된 비즈니스 네트워크 배포__
+
+<br>
+
+> ### __8단계 : 비즈니스 네트워크 정의 테스트__
+
+<br>
+
+> ### __9단계 : 참가자 생성__
+
+<br>
+
+> ### __10단계 : 저작물 만들기__
+
+<br>
+
+> ### __11단계 : 참가자 간 상품 이전__
+
 <br>
 
 <hr>
@@ -204,7 +259,7 @@ transaction Trade {
 
 ## __Hyperledger 개발자 자습서__
 
-[hyperledger.github.io hyperledger 개발자 자습서](https://hyperledger.github.io/composer/latest/tutorials/developer-tutorial)를 참고하세요!
+[hyperledger.github.io hyperledger 개발자 자습서](https://hyperledger.github.io/composer/latest/tutorials/developer-tutorial)를 참고하세요.
 
 ### __Linux Ubuntu 환경에서 진행해주세요.__
 
@@ -215,8 +270,29 @@ __로컬 환경에서 네트워크를 구축하는 실습입니다.__
 > ### __1단계 : 비즈니스 네트워크 구조 만들기__
 
 ```
+// ~ 경로에서 진행해주세요.
+
 // Yeoman(yo)을 사용해서 네트워크 구축
 // Yeoman이란 프로젝트에 필요한 디렉토리 및 파일을 만들어주는 커맨드라인 인터페이스
 yo hyperledger-composer:businessnetwork
 ```
 
+<br>
+
+> ### __2단계 : 비즈니스 네트워크 정의__
+
+<br>
+
+> ### __3단계 : 비즈니스 네트워크 아카이브 생성__
+
+<br>
+
+> ### __4단계 : 비즈니스 네트워크 배포__
+
+<br>
+
+> ### __5단계 : REST 서버 생성__
+
+<br>
+
+> ### __6단계 : 골격 생성 각도 응용 프로그램__
