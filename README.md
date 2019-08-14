@@ -176,6 +176,7 @@ __모델 파일은 비즈니스 네트워크에서 자산(asset), 참가자(part
  */
 namespace org.example.mynetwork
 
+// 자산 정의
 asset Commodity identified by tradingSymbol {
     o String tradingSymbol
     o String description
@@ -183,11 +184,15 @@ asset Commodity identified by tradingSymbol {
     o Double quantity
     --> Trader owner
 }
+
+// 참가자 정의
 participant Trader identified by tradeId {
     o String tradeId
     o String firstName
     o String lastName
 }
+
+// 트랜잭션 정의
 transaction Trade {
     --> Commodity commodity
     --> Trader newOwner
@@ -219,7 +224,7 @@ __정의된 함수는 트랜잭션이 `submit`될 때 자동으로 실행됩니�
 async function tradeCommodity(trade) {
     // 매개변수로 들어온 트랜잭션의 newOwner를 commodity의 owner로 설정
     trade.commodity.owner = trade.newOwner;
-    // 수정된 내용을 저장
+    // 수정된 Commodity를 자산 레지스트리에 저장
     let assetRegistry = await getAssetRegistry('org.example.mynetwork.Commodity');
     await assetRegistry.update(trade.commodity);
 }
@@ -231,9 +236,19 @@ async function tradeCommodity(trade) {
 
 > ### __6단계 : 엑세스 제어__
 
+__엑세스 제어 파일은 비즈니스 네트워크에 대한 엑세스 제어 규칙을 정의합니다.__
+
+__기본적인 엑세스 제어 파일은 `networkAdmin`에게 비즈니스 네트워크 및 시스템 수준 작업에 대한 모든 엑세스 권한을 제공합니다.__
+
+__비즈니스 네트워크에서 모델 파일이나 스크립트 파일의 경우에는 여러개가 있을 수 있지만, 엑세스 제어 파일의 경우에는 하나만 있어야합니다.__
+
+### __현재 실습에서는 간단한 비즈니스 네트워크를 사용하므로 엑세스 제어 파일을 편집하지 않습니다.__
+
 <br>
 
 > ### __7단계 : 업데이트 된 비즈니스 네트워크 배포__
+
+
 
 <br>
 
@@ -276,6 +291,22 @@ __로컬 환경에서 네트워크를 구축하는 실습입니다.__
 // Yeoman이란 프로젝트에 필요한 디렉토리 및 파일을 만들어주는 커맨드라인 인터페이스
 yo hyperledger-composer:businessnetwork
 ```
+
+1. 네트워크 이름(Business network name)은 `carauction-network`으로 지정해주세요.
+
+2. 설명(Description)은 자유롭게 입력하셔도 됩니다. (강의는 `carauction` 으로 진행하였습니다.)
+
+3. 개발자(Author name)와 이메일(Author email)도 자유롭게 입력하시면 됩니다.
+
+4. License는 `Apache-2.0`으로 작성해주세요.
+
+5. Namespace는 `org.example.mynetwork`로 작성해주세요.
+
+6. 기존에 존재하는 템플릿을 사용할 예정이기 때문에 `Yes`를 선택해주세요.
+
+<br>
+
+에러 없이 진행되셨다면 완료~
 
 <br>
 
