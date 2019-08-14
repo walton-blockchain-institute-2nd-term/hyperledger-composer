@@ -176,16 +176,18 @@ __모델 파일은 비즈니스 네트워크에서 자산(asset), 참가자(part
  */
 namespace org.example.mynetwork
 
-// 자산 정의
+// tradingSymbol을 기본키로 하는 Commodity 정의
 asset Commodity identified by tradingSymbol {
     o String tradingSymbol
     o String description
     o String mainExchange
+    // Trader의 기본키(tradeId)와 연결
+    // 여기서는 owner라는 이름으로 연결....
     o Double quantity
     --> Trader owner
 }
 
-// 참가자 정의
+// tradeId를 기본키로 하는 Trader 정의
 participant Trader identified by tradeId {
     o String tradeId
     o String firstName
@@ -312,17 +314,278 @@ yo hyperledger-composer:businessnetwork
 
 > ### __2단계 : 비즈니스 네트워크 정의__
 
+__모델, 트랜잭션 로직, 엑세스 제어를 정의합니다.__
+
+1. 모델 파일 수정
+
+```
+// ~/carauction-network 경로에서 진행합니다.
+
+vi models/org.example.mynetwork.cto
+```
+
+아래의 코드로 수정해주세요!
+
+```
+/**
+ * My commodity trading network
+ */
+namespace org.example.mynetwork
+asset Commodity identified by tradingSymbol {
+    o String tradingSymbol
+    o String description
+    o String mainExchange
+    o Double quantity
+    --> Trader owner
+}
+participant Trader identified by tradeId {
+    o String tradeId
+    o String firstName
+    o String lastName
+}
+transaction Trade {
+    --> Commodity commodity
+    --> Trader newOwner
+}
+```
+
+2. 트랜잭션 로직 파일 수정
+
+```
+vi lib/logic.js
+```
+
+아래의 코드로 수정해주세요!
+
+``` js
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* global getAssetRegistry getParticipantRegistry */
+
+/**
+ * Close the bidding for a vehicle listing and choose the
+ * highest bid that is over the asking price
+ * @param {org.acme.vehicle.auction.CloseBidding} closeBidding - the closeBidding transaction
+ * @transaction
+ */
+async function closeBidding(closeBidding) {  // eslint-disable-line no-unused-vars
+    const listing = closeBidding.listing;
+    if (listing.state !== 'FOR_SALE') {
+        throw new Error('Listing is not FOR SALE');
+    }
+    // by default we mark the listing as RESERVE_NOT_MET
+    listing.state = 'RESERVE_NOT_MET';
+    let highestOffer = null;
+    let buyer = null;
+    let seller = null;
+    if (listing.offers && listing.offers.length > 0) {
+        // sort the bids by bidPrice
+        listing.offers.sort(function(a, b) {
+            return (b.bidPrice - a.bidPrice);
+        });
+        highestOffer = listing.offers[0];
+        if (highestOffer.bidPrice >= listing.reservePrice) {
+            // mark the listing as SOLD
+            listing.state = 'SOLD';
+            buyer = highestOffer.member;
+            seller = listing.vehicle.owner;
+            // update the balance of the seller
+            console.log('#### seller balance before: ' + seller.balance);
+            seller.balance += highestOffer.bidPrice;
+            console.log('#### seller balance after: ' + seller.balance);
+            // update the balance of the buyer
+            console.log('#### buyer balance before: ' + buyer.balance);
+            buyer.balance -= highestOffer.bidPrice;
+            console.log('#### buyer balance after: ' + buyer.balance);
+            // transfer the vehicle to the buyer
+            listing.vehicle.owner = buyer;
+            // clear the offers
+            listing.offers = null;
+        }
+    }
+
+    if (highestOffer) {
+        // save the vehicle
+        const vehicleRegistry = await getAssetRegistry('org.acme.vehicle.auction.Vehicle');
+        await vehicleRegistry.update(listing.vehicle);
+    }
+
+    // save the vehicle listing
+    const vehicleListingRegistry = await getAssetRegistry('org.acme.vehicle.auction.VehicleListing');
+    await vehicleListingRegistry.update(listing);
+
+    if (listing.state === 'SOLD') {
+        // save the buyer
+        const userRegistry = await getParticipantRegistry('org.acme.vehicle.auction.Member');
+        await userRegistry.updateAll([buyer, seller]);
+    }
+}
+
+/**
+ * Make an Offer for a VehicleListing
+ * @param {org.acme.vehicle.auction.Offer} offer - the offer
+ * @transaction
+ */
+async function makeOffer(offer) {  // eslint-disable-line no-unused-vars
+    let listing = offer.listing;
+    if (listing.state !== 'FOR_SALE') {
+        throw new Error('Listing is not FOR SALE');
+    }
+    if (!listing.offers) {
+        listing.offers = [];
+    }
+    listing.offers.push(offer);
+
+    // save the vehicle listing
+    const vehicleListingRegistry = await getAssetRegistry('org.acme.vehicle.auction.VehicleListing');
+    await vehicleListingRegistry.update(listing);
+}
+```
+
+3. 엑세스 제어 파일 수정
+
+```
+vi permissions.acl
+```
+
+마찬가지로 아래의 코드로 수정해주시면 됩니다.
+
+```
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Access Control List for the auction network.
+ */
+rule Auctioneer {
+    description: "Allow the auctioneer full access"
+    participant: "org.acme.vehicle.auction.Auctioneer"
+    operation: ALL
+    resource: "org.acme.vehicle.auction.*"
+    action: ALLOW
+}
+
+rule Member {
+    description: "Allow the member read access"
+    participant: "org.acme.vehicle.auction.Member"
+    operation: READ
+    resource: "org.acme.vehicle.auction.*"
+    action: ALLOW
+}
+
+rule VehicleOwner {
+    description: "Allow the owner of a vehicle total access"
+    participant(m): "org.acme.vehicle.auction.Member"
+    operation: ALL
+    resource(v): "org.acme.vehicle.auction.Vehicle"
+    condition: (v.owner.getIdentifier() == m.getIdentifier())
+    action: ALLOW
+}
+
+rule VehicleListingOwner {
+    description: "Allow the owner of a vehicle total access to their vehicle listing"
+    participant(m): "org.acme.vehicle.auction.Member"
+    operation: ALL
+    resource(v): "org.acme.vehicle.auction.VehicleListing"
+    condition: (v.vehicle.owner.getIdentifier() == m.getIdentifier())
+    action: ALLOW
+}
+
+rule SystemACL {
+    description:  "System ACL to permit all access"
+    participant: "org.hyperledger.composer.system.Participant"
+    operation: ALL
+    resource: "org.hyperledger.composer.system.**"
+    action: ALLOW
+}
+
+rule NetworkAdminUser {
+    description: "Grant business network administrators full access to user resources"
+    participant: "org.hyperledger.composer.system.NetworkAdmin"
+    operation: ALL
+    resource: "**"
+    action: ALLOW
+}
+
+rule NetworkAdminSystem {
+    description: "Grant business network administrators full access to system resources"
+    participant: "org.hyperledger.composer.system.NetworkAdmin"
+    operation: ALL
+    resource: "org.hyperledger.composer.system.**"
+    action: ALLOW
+}
+```
+
 <br>
 
 > ### __3단계 : 비즈니스 네트워크 아카이브 생성__
+
+__비즈니스 네트워크가 정의되었으니 business network archive(.bna) 파일을 생성합니다.__
+
+```
+composer archive create -t dir -n .
+```
+
+에러 없이 실행되었다면 `carauction-network@0.0.1.bna` 파일이 생성된 것을 확인하실 수 있습니다!
 
 <br>
 
 > ### __4단계 : 비즈니스 네트워크 배포__
 
+1. 비즈니스 네트워크를 PeerAdmin이라는 피어에 설치합니다.
+
+```
+composer network install --card PeerAdmin@hlfv1 --archiveFile carauction-network@0.0.1.bna
+```
+
+2. 설치가 완료되었다면 비즈니스 네트워크를 시작합니다.
+
+```
+composer network start --networkName carauction-network --networkVersion 0.0.1 --networkAdmin admin --networkAdminEnrollSecret adminpw --card PeerAdmin@hlfv1 --file networkadmin.card
+```
+
+3. 네트워크 관리자 ID를 네트워크로 가져옵니다.
+
+```
+composer card import --file networkadmin.card
+```
+
+4. 네트워크에 ping 날리기 (생략 가능)
+
+```
+composer network ping --card admin@tutorial-network
+```
+
 <br>
 
 > ### __5단계 : REST 서버 생성__
+
+```
+composer-rest-server
+```
 
 <br>
 
